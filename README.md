@@ -15,7 +15,8 @@ Original EsdeathClient created by **Txb1**.
 - In-game skin changer, force skin, custom capes and a full cosmetics system
 - Custom main menu, server list, resource-pack manager and art/background gallery (with Wallhaven search)
 - Themes (custom colour, button styles, snow/particle overlay) and lots of HUD/visual modules
-- Bundled quality-of-life mods (voice chat, perspective, smooth font, sound sliders, and more)
+- Built-in voice chat that connects to **LabyMod's voice chat servers**
+- Bundled quality-of-life mods (perspective, smooth font, sound sliders, and more)
 
 ## Building
 
