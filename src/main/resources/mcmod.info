@@ -1,0 +1,54 @@
+[
+  {
+    "modid": "esdeath",
+    "name": "Esdeath",
+    "description": "Esdeath client (Forge 1.8.9 port of the standalone edited-vanilla build).",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "authorList": ["txb1"],
+    "credits": "Original standalone EsdeathClient; Forge port.",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  },
+  {
+    "modid": "mergedvoicechat",
+    "name": "Merged VoiceChat",
+    "description": "LabyMod-protocol voice chat, bundled into EsdeathClient and exposed as the VoiceChat module.",
+    "version": "0.1.0-dev",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "authorList": ["txb1"],
+    "credits": "Port of the LabyMod voice-chat protocol.",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  },
+  {
+    "modid": "meowmeow",
+    "name": "Perspective Mod",
+    "description": "Free-look third-person camera (PerspectiveMod v4), bundled into EsdeathClient and exposed as the Perspective Mod module.",
+    "version": "4.5",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "authorList": ["DJtheRedstoner"],
+    "credits": "PerspectiveMod v4.",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  },
+  {
+    "modid": "containerstrafe",
+    "name": "Container Strafe",
+    "description": "Keep strafing while a container/inventory GUI is open, bundled into EsdeathClient and exposed as the ContainerStrafe module.",
+    "version": "1.0",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "authorList": ["txb1"],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

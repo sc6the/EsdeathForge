@@ -1,0 +1,93 @@
+package me.txb1.extras.cosmetics.laby;
+
+import net.minecraft.client.entity.AbstractClientPlayer;
+import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.entity.RenderPlayer;
+import net.minecraft.client.renderer.entity.layers.LayerRenderer;
+import net.minecraft.util.MathHelper;
+import net.minecraft.util.ResourceLocation;
+
+// Renders a player's LabyMod cape. This replaces the vanilla getLocationCape + LayerCape path, which
+// can't be reused: LabyMod cape PNGs are 22x17 (a tight 10x16x1 box-UV unwrap), whereas vanilla
+// ModelPlayer.bipedCape is built with setTextureSize(64,32), so a LabyMod texture would map to the
+// wrong UVs and render garbled. So we keep vanilla's exact cape-swing transform (copied from
+// LayerCape) but draw our own cape ModelRenderer sized 22x17. Shows on yourself and other players
+// whenever the cape priority is Labymod and that player actually has a LabyMod cape (LabyCapes ->
+// items.laby.net, 404 -> nothing).
+public class LayerLabyCape implements LayerRenderer<AbstractClientPlayer> {
+
+   private final RenderPlayer playerRenderer;
+   private ModelRenderer cape;
+
+   public LayerLabyCape(RenderPlayer playerRenderer) {
+      this.playerRenderer = playerRenderer;
+   }
+
+   private void ensureCape() {
+      if (this.cape == null) {
+         // textureSize must be set before addBox: ModelBox bakes UVs from the renderer's texture
+         // size at construction. 22x17 = exactly the box-UV unwrap of a 10(w) x 16(h) x 1(d) cape.
+         this.cape = new ModelRenderer(this.playerRenderer.getMainModel(), 0, 0);
+         this.cape.setTextureSize(22, 17);
+         this.cape.addBox(-5.0F, 0.0F, -1.0F, 10, 16, 1, 0.0F);
+      }
+   }
+
+   @Override
+   public void doRenderLayer(AbstractClientPlayer player, float limbSwing, float limbSwingAmount, float partialTicks,
+                             float ageInTicks, float netHeadYaw, float headPitch, float scale) {
+      if (!LabyCapes.enabled() || !player.hasPlayerInfo() || player.isInvisible()) {
+         return;
+      }
+      ResourceLocation tex = LabyCapes.get(player.getUniqueID());
+      if (tex == null) {
+         return;
+      }
+
+      ensureCape();
+      this.cape.rotationPointY = player.isSneaking() ? 2.0F : 0.0F;
+
+      GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+      this.playerRenderer.bindTexture(tex);
+      GlStateManager.pushMatrix();
+      GlStateManager.translate(0.0F, 0.0F, 0.125F);
+
+      // ---- cape swing, verbatim from net.minecraft.client.renderer.entity.layers.LayerCape ----
+      double d0 = player.prevChasingPosX + (player.chasingPosX - player.prevChasingPosX) * (double) partialTicks
+         - (player.prevPosX + (player.posX - player.prevPosX) * (double) partialTicks);
+      double d1 = player.prevChasingPosY + (player.chasingPosY - player.prevChasingPosY) * (double) partialTicks
+         - (player.prevPosY + (player.posY - player.prevPosY) * (double) partialTicks);
+      double d2 = player.prevChasingPosZ + (player.chasingPosZ - player.prevChasingPosZ) * (double) partialTicks
+         - (player.prevPosZ + (player.posZ - player.prevPosZ) * (double) partialTicks);
+      float f = player.prevRenderYawOffset + (player.renderYawOffset - player.prevRenderYawOffset) * partialTicks;
+      double d3 = (double) MathHelper.sin(f * (float) Math.PI / 180.0F);
+      double d4 = (double) (-MathHelper.cos(f * (float) Math.PI / 180.0F));
+      float f1 = (float) d1 * 10.0F;
+      f1 = MathHelper.clamp_float(f1, -6.0F, 32.0F);
+      float f2 = (float) (d0 * d3 + d2 * d4) * 100.0F;
+      float f3 = (float) (d0 * d4 - d2 * d3) * 100.0F;
+      if (f2 < 0.0F) {
+         f2 = 0.0F;
+      }
+      float f4 = player.prevCameraYaw + (player.cameraYaw - player.prevCameraYaw) * partialTicks;
+      f1 = f1 + MathHelper.sin((player.prevDistanceWalkedModified
+         + (player.distanceWalkedModified - player.prevDistanceWalkedModified) * partialTicks) * 6.0F) * 32.0F * f4;
+      if (player.isSneaking()) {
+         f1 += 25.0F;
+      }
+      GlStateManager.rotate(6.0F + f2 / 2.0F + f1, 1.0F, 0.0F, 0.0F);
+      GlStateManager.rotate(f3 / 2.0F, 0.0F, 0.0F, 1.0F);
+      GlStateManager.rotate(-f3 / 2.0F, 0.0F, 1.0F, 0.0F);
+      GlStateManager.rotate(180.0F, 0.0F, 1.0F, 0.0F);
+      // ----------------------------------------------------------------------------------------
+
+      this.cape.render(0.0625F);
+      GlStateManager.popMatrix();
+   }
+
+   @Override
+   public boolean shouldCombineTextures() {
+      return false;
+   }
+}

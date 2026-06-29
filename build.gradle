@@ -1,0 +1,126 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { name = "forge";    url = "https://maven.minecraftforge.net/" }
+        maven { name = "sonatype"; url = "https://oss.sonatype.org/content/repositories/snapshots/" }
+        maven { name = "sponge";   url = "https://repo.spongepowered.org/maven" }
+    }
+    dependencies {
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT'
+        classpath 'org.spongepowered:mixingradle:0.6-SNAPSHOT'
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'org.spongepowered.mixin'
+
+version = "1.0"
+group = "me.txb1"
+archivesBaseName = "EsdeathForge"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+// client sources contain UTF-8 (§ colour codes, fullwidth glyphs); javac defaults to Cp1252 on Windows
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+minecraft {
+    version = "1.8.9-11.15.1.2318-1.8.9"
+    runDir = "run"
+    mappings = "stable_22"
+}
+
+repositories {
+    maven { name = "sponge"; url = "https://repo.spongepowered.org/maven" }
+}
+
+// 'shade' = compiled against AND bundled into the mod jar (these aren't on the MC/Forge runtime
+// classpath). Mixin must be shaded so its MixinTweaker is found at launch; the EventAPI too.
+configurations {
+    shade
+    compile.extendsFrom shade
+}
+
+dependencies {
+    shade('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
+        transitive = false
+    }
+    // DarkMagician6 EventAPI: vineflower can't recover its obfuscated static-init fields, so we
+    // use the original compiled classes as a library (it references nothing from Minecraft).
+    shade files('libs/eventapi.jar')
+    // GifCapes (me.proxycracked.capemod): a production (SRG) jar; bundle its compiled classes so
+    // its @Mod co-loads (tick-based cape rendering) and Esdeath's Capes button can open
+    // GuiChangeCape. SRG names resolve at the Forge runtime exactly like a standalone mod would.
+    shade files('libs/gifcapes.jar')
+    // ParticleCustomiser (me.powns.particlecustomiser): bundled WITHOUT its coremod plugin/ASM
+    // transformer (replaced by MixinEntityFX). We instantiate its DummyModContainer ourselves and
+    // reuse its Settings + editor GUI for per-particle colour/scale/opacity.
+    shade files('libs/particlecustomiser.jar')
+    // Co-loaded @Mods bundled like gifcapes (their @Mod is discovered via FMLCorePluginContainsFMLMod):
+    //   BlockOverlay (replaces the BlockOutLine module; coremod/ASM dropped — it cancels the vanilla
+    //     outline via DrawBlockHighlightEvent), Nametag Editor (replaces CleanNames), SoundSliders
+    //     (button injected into the sound options), Statsify (toggleable module).
+    shade files('libs/blockoverlay.jar')
+    shade files('libs/nametageditor.jar')
+    shade files('libs/soundsliders.jar')
+    shade files('libs/statsify.jar')
+    // anims (com.syuto.animations, "1.7 animations"): bundled WITHOUT its own Mixin lib + bootstrap;
+    // its mixins are minVersion 0.7 (basic @Inject/@Redirect) so our shaded Mixin 0.7.11 processes
+    // its config (added to MixinConfigs). Its @Mod co-loads + registers /animations + AnimationsGui.
+    shade files('libs/anims.jar')
+    // Fullbright (io.armandukx.fullbright): replaces the old Esdeath Fullbright module. Its @Mod
+    // co-loads + applies the gamma via its EventListener when config.enabled; the Esdeath module
+    // toggles that flag and opens its SettingsGui.
+    shade files('libs/fullbright.jar')
+    // GlintColorizer (me.powns.glintcolorizer): glint colour/opacity/chroma. mcmod.info stripped;
+    // its tweaker/coremod are NOT used — EsdeathCorePlugin registers the (name-agnostic) glint
+    // transformers instead, and the GlintCustomizer module drives Colors + opens MainSettingsGui.
+    shade files('libs/glintcolorizer.jar')
+    // SmoothFont (bre.smoothfont, "1.8.9-1.15.2"): smooth/anti-aliased custom font rendering. Its own
+    // coremod is NOT used as a second FMLCorePlugin — EsdeathCorePlugin registers its Transformer +
+    // ModContainer and delegates to bre.smoothfont.asm.CorePlugin.injectData (OptiFine detection +
+    // GlobalConfig load, which MUST run before FontRenderer is transformed). mod_SmoothFont then
+    // co-loads via the ModContainer, registering /sfont + the in-game font config GUI.
+    shade files('libs/smoothfont.jar')
+    // gson/apache-http/commons used by FireDB + UniversalAccountManager are already provided by
+    // Forge 1.8.9 at runtime (gson 2.2.4, commons-io 2.4, commons-lang3 3.3.2, httpclient 4.3.3).
+}
+
+mixin {
+    add sourceSets.main, "mixins.esdeath.refmap.json"
+}
+
+jar {
+    // bundle everything in 'shade' (Mixin lib + EventAPI) into the mod jar; drop their
+    // META-INF so their manifests/signatures don't clobber ours.
+    from configurations.shade.collect { it.isDirectory() ? it : zipTree(it) }
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/MANIFEST.MF'
+    exclude 'LICENSE', 'LICENSE.txt', 'license.txt', 'NOTICE', 'NOTICE.txt', 'README', 'README.md'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest.attributes(
+        'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
+        'MixinConfigs': 'mixins.esdeath.json,mixins.animations.json,mixins.mergedvoicechat.json',
+        'FMLCorePlugin': 'me.txb1.forge.coremod.EsdeathCorePlugin',
+        'FMLCorePluginContainsFMLMod': 'true',
+        'ForceLoadAsMod': 'true',
+        // SmoothFont (bundled) widens several FontRenderer fields/methods to public via this access
+        // transformer. Its own manifest is dropped when shaded, so re-declare the FMLAT here (the cfg
+        // ships at META-INF/SmoothFont_at.cfg) — without it FontRendererHook hits IllegalAccessError.
+        'FMLAT': 'SmoothFont_at.cfg'
+    )
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "mcversion", project.minecraft.version
+
+    from(sourceSets.main.resources.srcDirs) {
+        include 'mcmod.info'
+        expand 'version': project.version, 'mcversion': project.minecraft.version
+    }
+    from(sourceSets.main.resources.srcDirs) {
+        exclude 'mcmod.info'
+    }
+}

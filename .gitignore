@@ -1,0 +1,24 @@
+# Gradle / build output
+.gradle/
+build/
+out/
+bin/
+
+# ForgeGradle
+.gradletasknamecache
+**/run/
+**/eclipse/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db

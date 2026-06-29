@@ -1,0 +1,26 @@
+{
+  "required": true,
+  "package": "me.txb1.forge.mixin",
+  "refmap": "mixins.esdeath.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "minVersion": "0.7.11",
+  "client": [
+    "MixinAbstractClientPlayer",
+    "MixinAbstractResourcePack",
+    "MixinEntityFX",
+    "MixinEntityParticleEmitter",
+    "MixinFontRenderer",
+    "MixinEntityRenderer",
+    "MixinGuiConnecting",
+    "MixinGuiContainer",
+    "MixinGuiIngame",
+    "MixinGuiNewChat",
+    "MixinGuiScreenServerList",
+    "MixinInventoryEffectRenderer",
+    "MixinLayerArmorBase",
+    "MixinNetHandlerPlayClient",
+    "MixinPlayerControllerMP",
+    "MixinRenderPlayer"
+  ],
+  "mixins": []
+}
