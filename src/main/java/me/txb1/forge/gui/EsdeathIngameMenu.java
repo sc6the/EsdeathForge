@@ -169,8 +169,8 @@ public class EsdeathIngameMenu extends EsdeathGuiScreen {
          && button.mouseY > button.yPosition + button.height / 3 * 2
          && button.mouseX < button.xPosition + button.width
          && button.mouseY < button.yPosition + button.height;
-      // Move handle (bottom-left) on VISUAL modules opens the single-element drag editor.
-      boolean onMove = m.isCategory(Category.VISUAL)
+      // Move handle (bottom-left) on HUD modules opens the single-element drag editor.
+      boolean onMove = m.isHudElement()
          && button.mouseX >= button.xPosition
          && button.mouseX < button.xPosition + button.width / 4
          && button.mouseY > button.yPosition + button.height / 3 * 2

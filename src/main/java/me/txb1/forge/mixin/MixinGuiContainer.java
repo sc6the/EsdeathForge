@@ -30,4 +30,34 @@ public abstract class MixinGuiContainer {
          me.txb1.extras.snow.SnowRenderer.render(sr.getScaledWidth(), sr.getScaledHeight(), mouseX, mouseY);
       }
    }
+
+   // ShinyPots: potion liquid colour as slot background. ShopHelper: affordable-item slot highlight.
+   // Drawn behind the item (HEAD of drawSlot). GL is translated to guiLeft/guiTop here, so the slot's
+   // display coords land correctly.
+   @Inject(method = "drawSlot", at = @At("HEAD"))
+   private void esdeath$slotOverlay(net.minecraft.inventory.Slot slot, CallbackInfo ci) {
+      if (slot == null) {
+         return;
+      }
+      net.minecraft.item.ItemStack s = slot.getStack();
+      if (s == null) {
+         return;
+      }
+      int x = slot.xDisplayPosition;
+      int y = slot.yDisplayPosition;
+      if (me.txb1.player.modulesystem.modules.utils.ShinyPots.active
+            && s.getItem() instanceof net.minecraft.item.ItemPotion) {
+         int color = s.getItem().getColorFromItemStack(s, 0) & 0xFFFFFF;
+         int a = Math.max(0, Math.min(255, me.txb1.player.modulesystem.modules.utils.ShinyPots.opacity));
+         net.minecraft.client.gui.Gui.drawRect(x, y, x + 16, y + 16, (a << 24) | color);
+      }
+      if (me.txb1.player.modulesystem.modules.utils.ShopHelper.active
+            && me.txb1.player.modulesystem.modules.utils.ShopHelper.highlightAffordable) {
+         int color = me.txb1.player.modulesystem.modules.utils.ShopHelper.affordableColor(s);
+         if (color != 0) {
+            int a = Math.max(0, Math.min(255, me.txb1.player.modulesystem.modules.utils.ShopHelper.opacity));
+            net.minecraft.client.gui.Gui.drawRect(x, y, x + 16, y + 16, (a << 24) | color);
+         }
+      }
+   }
 }

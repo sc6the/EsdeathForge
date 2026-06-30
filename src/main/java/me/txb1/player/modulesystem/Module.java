@@ -89,6 +89,13 @@ public class Module {
       this.setting = var4;
    }
 
+   // True for modules that draw a movable HUD element (positioned via AnzeigeSettings). VISUAL modules
+   // are HUD elements by definition; UTILS HUD modules (HeightOverlay, UpgradeHud, …) override this so
+   // they get the move handle + show up in the move editor too.
+   public boolean isHudElement() {
+      return this.category == Category.VISUAL;
+   }
+
    public boolean isCategory(Category var1) {
       int var10000;
       if (((this.category) == (var1))) {

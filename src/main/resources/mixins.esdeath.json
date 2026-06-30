@@ -18,6 +18,7 @@
     "MixinGuiScreenServerList",
     "MixinInventoryEffectRenderer",
     "MixinLayerArmorBase",
+    "MixinMovementInputFromOptions",
     "MixinNetHandlerPlayClient",
     "MixinPlayerControllerMP",
     "MixinRenderPlayer"

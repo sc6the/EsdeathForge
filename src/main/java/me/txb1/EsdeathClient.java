@@ -119,6 +119,7 @@ public class EsdeathClient {
       this.categories.add(Category.RENDER);
       this.categories.add(Category.PLAYER);
       this.categories.add(Category.VISUAL);
+      this.categories.add(Category.UTILS);
       this.moduleManager = new ModuleManager();
       this.threadHelper = new ThreadHelper();
 

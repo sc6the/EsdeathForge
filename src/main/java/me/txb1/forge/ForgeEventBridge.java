@@ -44,6 +44,10 @@ public class ForgeEventBridge {
          EventManager.call(new EventTick());
          EventManager.call(new EventUpdate());
 
+         // Utils modules with periodic logic
+         me.txb1.player.modulesystem.modules.utils.AutoGG.tick();
+         me.txb1.player.modulesystem.modules.utils.AutoTip.tick();
+
          // Keep the bundled io.armandukx.fullbright config in sync with the Esdeath module EVERY tick.
          // A one-shot reconcile at boot loses to the bundled mod's own config load (which defaults ON),
          // so fullbright showed until the module was toggled. The bundled EventListener restores gamma
@@ -145,6 +149,30 @@ public class ForgeEventBridge {
                me.txb1.extras.status.LocalStatus.text, me.txb1.extras.status.LocalStatus.size,
                me.txb1.extras.status.LocalStatus.y);
          }
+      }
+   }
+
+   // Utils: AutoGG / AutoTip / UpgradeHud read incoming chat; AutoTip can hide its own tip messages.
+   @SubscribeEvent
+   public void onChatReceived(net.minecraftforge.client.event.ClientChatReceivedEvent event) {
+      if (event.message == null) {
+         return;
+      }
+      String text = event.message.getUnformattedText();
+      me.txb1.player.modulesystem.modules.utils.AutoGG.onChat(text);
+      me.txb1.player.modulesystem.modules.utils.UpgradeHud.onChat(text);
+      if (me.txb1.player.modulesystem.modules.utils.AutoTip.shouldHide()
+            && me.txb1.player.modulesystem.modules.utils.AutoTip.isTipMessage(text)) {
+         event.setCanceled(true);
+      }
+   }
+
+   // AntiMisplace: block obsidian placements that aren't next to a bed.
+   @SubscribeEvent
+   public void onInteract(net.minecraftforge.event.entity.player.PlayerInteractEvent event) {
+      if (event.action == net.minecraftforge.event.entity.player.PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK
+            && me.txb1.player.modulesystem.modules.utils.AntiMisplace.shouldCancel(event.pos, event.face)) {
+         event.setCanceled(true);
       }
    }
 

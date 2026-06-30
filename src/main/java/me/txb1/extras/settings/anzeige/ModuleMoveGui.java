@@ -52,7 +52,7 @@ public class ModuleMoveGui extends GuiScreen {
    private void rebuildAnchors() {
       this.anchors.clear();
       for (Module m : EsdeathClient.getInstance().getModuleManager().getModules()) {
-         if (m.isCategory(Category.VISUAL) && m.isEnabled()) {
+         if (m.isHudElement() && m.isEnabled()) {
             String k = m.getName().toLowerCase();
             Cordinates c = AnzeigeSettings.getCords(k);
             this.anchors.add(new int[]{c.getX(), c.getY(), k.equals(this.key) ? 1 : 0});

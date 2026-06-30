@@ -160,7 +160,7 @@ public class ModuleButton extends Gui {
 
          // Move handle (bottom-left): a 4-arrow "move" icon shown on positionable VISUAL modules.
          // Clicking it opens the single-element move editor; the pencil (bottom-right) opens config.
-         if (this.module().isCategory(Category.VISUAL)) {
+         if (this.module().isHudElement()) {
             drawMoveIcon(this.xPosition + 3, this.yPosition + this.height - 12, EsdeathClient.getInstance().rainbow(500));
          }
 

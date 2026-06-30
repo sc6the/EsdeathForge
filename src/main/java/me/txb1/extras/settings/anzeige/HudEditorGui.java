@@ -126,7 +126,7 @@ public class HudEditorGui extends GuiScreen {
    public void initGui() {
       this.elements.clear();
       for (Module m : EsdeathClient.getInstance().getModuleManager().getModules()) {
-         if (m.isCategory(Category.VISUAL) && m.isEnabled()) {
+         if (m.isHudElement() && m.isEnabled()) {
             this.elements.add(new ModuleElement(m.getName().toLowerCase()));
          }
       }

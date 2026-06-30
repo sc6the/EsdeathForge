@@ -60,6 +60,17 @@ public class ModuleManager {
       this.addModule(new ArmorHider());
       this.addModule(new BossbarHider());
       this.addModule(new me.txb1.player.modulesystem.modules.render.InventorySnow());
+      // Utils category (ported meowtils-style modules)
+      this.addModule(new me.txb1.player.modulesystem.modules.utils.AutoGG());
+      this.addModule(new me.txb1.player.modulesystem.modules.utils.AutoTip());
+      this.addModule(new me.txb1.player.modulesystem.modules.utils.NullMove());
+      this.addModule(new me.txb1.player.modulesystem.modules.utils.ShinyPots());
+      this.addModule(new me.txb1.player.modulesystem.modules.utils.ShopHelper());
+      this.addModule(new me.txb1.player.modulesystem.modules.utils.HeightOverlay());
+      this.addModule(new me.txb1.player.modulesystem.modules.utils.UpgradeHud());
+      this.addModule(new me.txb1.player.modulesystem.modules.utils.BedTracker());
+      this.addModule(new me.txb1.player.modulesystem.modules.utils.EventTimers());
+      this.addModule(new me.txb1.player.modulesystem.modules.utils.AntiMisplace());
       this.addModule(new me.txb1.player.modulesystem.modules.render.AdvancedCulling());
       this.addModule(new me.txb1.player.modulesystem.modules.player.ProjectL());
       this.addModule(new Hitbox());
