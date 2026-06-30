@@ -53,6 +53,31 @@ public final class LabyUserData {
       return m != null && m.containsKey(cosmeticId);
    }
 
+   // Inject equipped cosmetics for a player straight from the LabyConnect socket
+   // (PacketUpdateCosmetics / PacketActionBroadcast COSMETIC_CHANGE — same {"c":[...]} format as the
+   // REST endpoint). This is authoritative + live: it overrides the cached/REST data so cosmetic
+   // changes show immediately, and seeds the cache so no REST fetch is needed for tracked players.
+   public static void feed(UUID uuid, String json) {
+      if (uuid == null || json == null) {
+         return;
+      }
+      try {
+         Map<Integer, String[]> result = new HashMap<Integer, String[]>();
+         parse(json, result);
+         CACHE.put(uuid, result);
+         PENDING.remove(uuid);
+      } catch (Throwable ignored) {
+      }
+   }
+
+   // Cosmetics removed for a player (socket sent null) -> they now own nothing.
+   public static void invalidate(UUID uuid) {
+      if (uuid != null) {
+         CACHE.put(uuid, new HashMap<Integer, String[]>());
+         PENDING.remove(uuid);
+      }
+   }
+
    // Data array the player has for a cosmetic, or empty if absent.
    public static String[] data(UUID uuid, int cosmeticId) {
       Map<Integer, String[]> m = get(uuid);

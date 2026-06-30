@@ -3,7 +3,7 @@ package net.labymod.support.util;
 public final class Debug {
 
     public enum EnumDebugMode {
-        ADDON, NETWORK, PROTOCOL, AUDIO, GENERAL
+        ADDON, NETWORK, PROTOCOL, AUDIO, GENERAL, LABYMOD_CHAT
     }
 
     private static final boolean ACTIVE = Boolean.getBoolean("mergedvoicechat.debug");

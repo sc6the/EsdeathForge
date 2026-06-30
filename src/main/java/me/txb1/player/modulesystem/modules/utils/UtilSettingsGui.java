@@ -48,6 +48,16 @@ public class UtilSettingsGui extends GuiScreen {
       return this;
    }
 
+   public UtilSettingsGui file(String label, Supplier<String> get, Consumer<String> set) {
+      settings.add(new FileSetting(label, get, set));
+      return this;
+   }
+
+   public UtilSettingsGui button(String label, Runnable action) {
+      settings.add(new ButtonSetting(label, action));
+      return this;
+   }
+
    @Override
    public void initGui() {
       this.rowW = 220;
@@ -274,6 +284,76 @@ public class UtilSettingsGui extends GuiScreen {
             return true;
          }
          return false;
+      }
+   }
+
+   private final class ButtonSetting extends Setting {
+      final Runnable action;
+
+      ButtonSetting(String label, Runnable action) {
+         super(label);
+         this.action = action;
+      }
+
+      @Override
+      void draw(int mx, int my) {
+         boolean hov = mx >= colX && mx <= colX + rowW && my >= y - 2 && my <= y + 11;
+         Gui.drawRect(colX, y - 2, colX + rowW, y + 11, hov ? 0x55FFFFFF : 0x40000000);
+         fontRendererObj.drawStringWithShadow("§b▶ " + label, colX + 5, y, -1);
+      }
+
+      @Override
+      void onClick(int mx, int my, int btn) {
+         if (action != null && mx >= colX && mx <= colX + rowW && my >= y - 2 && my <= y + 11) {
+            action.run();
+         }
+      }
+   }
+
+   private final class FileSetting extends Setting {
+      final Supplier<String> get;
+      final Consumer<String> set;
+
+      FileSetting(String label, Supplier<String> get, Consumer<String> set) {
+         super(label);
+         this.get = get;
+         this.set = set;
+      }
+
+      @Override
+      void draw(int mx, int my) {
+         String path = get.get();
+         String name = path == null || path.isEmpty() ? "§8(none)" : "§f" + new java.io.File(path).getName();
+         fontRendererObj.drawStringWithShadow("§7" + label + ": " + name, colX, y, -1);
+         // [Pick...] button on the right
+         Gui.drawRect(colX + rowW - 56, y - 3, colX + rowW, y + 11, 0x80000000);
+         fontRendererObj.drawStringWithShadow("§ePick...", colX + rowW - 50, y, -1);
+      }
+
+      @Override
+      void onClick(int mx, int my, int btn) {
+         if (mx >= colX + rowW - 56 && mx <= colX + rowW && my >= y - 3 && my <= y + 11) {
+            pick();
+         }
+      }
+
+      private void pick() {
+         new Thread(new Runnable() {
+            @Override
+            public void run() {
+               try {
+                  java.awt.FileDialog fd = new java.awt.FileDialog((java.awt.Frame) null, "Select a sound (wav / ogg / mp3)", java.awt.FileDialog.LOAD);
+                  fd.setFile("*.wav;*.ogg;*.mp3");
+                  fd.setVisible(true);
+                  String dir = fd.getDirectory();
+                  String fn = fd.getFile();
+                  if (dir != null && fn != null) {
+                     set.accept(new java.io.File(dir, fn).getAbsolutePath());
+                  }
+               } catch (Throwable ignored) {
+               }
+            }
+         }, "BedSound-Picker").start();
       }
    }
 

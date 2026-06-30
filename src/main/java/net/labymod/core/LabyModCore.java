@@ -35,6 +35,22 @@ public final class LabyModCore {
         public EntityPlayerSP getPlayer() {
             return Minecraft.getMinecraft().thePlayer;
         }
+
+        /** Notch bcy = NetHandlerPlayClient (the play-connection / tab list source). */
+        public net.minecraft.client.network.NetHandlerPlayClient getConnection() {
+            return Minecraft.getMinecraft().getNetHandler();
+        }
+
+        /** Notch ave.A().W().a(bpf.a(rl, pitch)) -> SoundHandler.playSound(PositionedSoundRecord). */
+        public void playSound(net.minecraft.util.ResourceLocation resourceLocation, float pitch) {
+            Minecraft.getMinecraft().getSoundHandler()
+                .playSound(net.minecraft.client.audio.PositionedSoundRecord.create(resourceLocation, pitch));
+        }
+
+        /** Wraps a netty ByteBuf in LabyConnect's PacketBuf (concrete delegate = PacketBufOld). */
+        public net.labymod.labyconnect.packets.PacketBuf createPacketBuf(io.netty.buffer.ByteBuf byteBuf) {
+            return new net.labymod.core_implementation.mc18.util.PacketBufOld(byteBuf);
+        }
     }
 
     public static final class WorldAdapter {

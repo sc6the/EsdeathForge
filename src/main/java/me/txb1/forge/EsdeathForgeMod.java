@@ -29,6 +29,8 @@ public class EsdeathForgeMod {
    public static final KeyBinding OPEN_GUI = new KeyBinding("Open Esdeath Menu", Keyboard.KEY_RSHIFT, "Esdeath");
    // hold to hard-zoom (default: V — kept off OptiFine's C so both zooms can coexist)
    public static final KeyBinding HARD_ZOOM = new KeyBinding("Hard Zoom", Keyboard.KEY_V, "Esdeath");
+   // open the LabyChat friends/DM screen (default: O)
+   public static final KeyBinding OPEN_LABYCHAT = new KeyBinding("Open LabyChat", Keyboard.KEY_O, "Esdeath");
 
    @Mod.EventHandler
    public void preInit(FMLPreInitializationEvent event) {
@@ -47,9 +49,12 @@ public class EsdeathForgeMod {
       MinecraftForge.EVENT_BUS.register(new me.txb1.extras.sound.RedstoneSoundHandler());
       ClientRegistry.registerKeyBinding(OPEN_GUI);
       ClientRegistry.registerKeyBinding(HARD_ZOOM);
+      ClientRegistry.registerKeyBinding(OPEN_LABYCHAT);
       // bundled ParticleCustomiser (colour/scale/opacity) — create + register its mod container and
       // load its config so MixinEntityFX and the Particles editor have live settings.
       ParticleCustomizerHolder.init();
+      // LabyConnect: connect to chat.labymod.net (friends, presence, cosmetics, LabyChat backbone).
+      me.txb1.extras.labyconnect.LabyConnectManager.init();
       EsdeathClient.getInstance().onEnable();
    }
 }

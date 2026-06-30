@@ -37,7 +37,7 @@ public class EsdeathIngameMenu extends EsdeathGuiScreen {
    // panel actions
    private static final int A_CAPES = 0, A_DISPLAY = 1, A_COSMETICS = 2, A_STATUS = 3,
       A_BACK_GAME = 4, A_OPTIONS = 5, A_BACK_MENU = 6, A_THEME = 7, A_RELOAD = 9, A_MODS = 10,
-      A_SKIN = 11;
+      A_SKIN = 11, A_FRIENDS = 12;
 
    @Override
    public void initGui() {
@@ -188,6 +188,8 @@ public class EsdeathIngameMenu extends EsdeathGuiScreen {
    @Override
    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
       this.drawDefaultBackground();
+      me.txb1.extras.labyconnect.gui.ChatTabBar.draw(this, this.fontRendererObj, mouseX, mouseY,
+         me.txb1.extras.labyconnect.gui.ChatTabBar.Tab.PAUSEMENU);
       computeBox();
 
       // ---- module box ----
@@ -233,6 +235,14 @@ public class EsdeathIngameMenu extends EsdeathGuiScreen {
 
    @Override
    protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
+      // top tab bar — switch to Chat / Friends / Voicechat
+      me.txb1.extras.labyconnect.gui.ChatTabBar.Tab tab =
+         me.txb1.extras.labyconnect.gui.ChatTabBar.clicked(this, this.fontRendererObj, mouseX, mouseY);
+      if (tab != null && tab != me.txb1.extras.labyconnect.gui.ChatTabBar.Tab.PAUSEMENU) {
+         me.txb1.extras.labyconnect.gui.ChatTabBar.open(this.mc, tab);
+         return;
+      }
+
       // search box swallows its own clicks (don't let them fall through to the category switch)
       int sbW = 110;
       int sbX = this.boxRight - sbW - 6;

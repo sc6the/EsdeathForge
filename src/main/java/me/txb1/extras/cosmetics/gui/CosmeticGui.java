@@ -29,18 +29,19 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
    private static final int ROW_GAP = 5;
    private static final int EDIT_H = 84;
    private static final int BTN_RESET = 1;
-   private static final String[] CATS = {"Esdeath", "OAM"};
+   private static final String[] CATS = {"Esdeath", "OAM", "Labymod"};
 
-   private GuiButton button_refresh;
    private GuiTextField hexField;
    private GuiTextField xField;
    private GuiTextField yField;
    private GuiTextField zField;
+   private GuiTextField searchField;
    private boolean scaleDragging;
    private boolean alphaDragging;
    private boolean barDragging;
    private String selected;
    private int lastButton;
+   private int colorSlot; // which rgb slot the hex field edits, for multi-colour LabyMod cosmetics
 
    private int activeCat = 1; // default to OAM (matches the largest set)
    private final List<CosmeticButton> all = new ArrayList<CosmeticButton>();
@@ -48,7 +49,11 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
    private int scroll;
 
    // layout (computed in initGui)
-   private int catX, catY, catH;
+   private int catY, catH;
+   private int[] catTabX = new int[CATS.length];
+   private int[] catTabW = new int[CATS.length];
+   private int toolbarY, toolbarH;
+   private int resetX, refreshX, toolBtnW, toolBtnH;
    private int gridX, gridW, viewTop, viewBottom;
    private int barX, barW;
    private int editTop;
@@ -70,13 +75,28 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
          return;
       }
 
-      this.catX = MARGIN;
-      this.catY = 16;
-      this.catH = 13;
+      FontRenderer frInit = Minecraft.getMinecraft().fontRendererObj;
+      // Row 1: horizontal category tabs.
+      this.catY = 8;
+      this.catH = 12;
+      int cx = MARGIN;
+      for (int i = 0; i < CATS.length; i++) {
+         int w = frInit.getStringWidth(CATS[i]) + 16;
+         this.catTabX[i] = cx;
+         this.catTabW[i] = w;
+         cx += w + 4;
+      }
+      // Row 2: toolbar with search field (left) + themed Reset/Refresh (right).
+      this.toolbarY = this.catY + this.catH + 6;
+      this.toolbarH = 16;
+      this.toolBtnW = 58;
+      this.toolBtnH = this.toolbarH;
+      this.refreshX = this.width - MARGIN - this.toolBtnW;
+      this.resetX = this.refreshX - 6 - this.toolBtnW;
       this.barX = MARGIN;
       this.barW = 5;
       this.gridX = MARGIN + this.barW + 8;
-      this.viewTop = this.catY + CATS.length * this.catH + 8;
+      this.viewTop = this.toolbarY + this.toolbarH + 8;
       this.gridW = this.width - this.gridX - MARGIN;
       this.editTop = this.height - EDIT_H;
       this.viewBottom = this.editTop - 4;
@@ -96,14 +116,10 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
       this.fieldRowY = this.editTop + 14;
       this.optStartY = this.editTop + 32;
 
-      // build all cosmetic buttons once, bucketed by category at layout time
-      this.all.clear();
-      int id = 0;
-      for (String name : CosmeticController.getCosmetics()) {
-         CosmeticButton b = new CosmeticButton(id++, 0, 0, 10, BTN_H, name);
-         this.cosmeticButtonList.add(b);
-         this.all.add(b);
-      }
+      // make sure the offline LabyMod catalog is registered (if its index has loaded) before we build
+      // the button list, so the Labymod category is populated on first open.
+      me.txb1.extras.cosmetics.cosmetics.laby.LabyOfflineCatalog.ensureRegistered();
+      this.buildButtons();
 
       FontRenderer fr = Minecraft.getMinecraft().fontRendererObj;
       this.hexField = new GuiTextField(1, fr, this.sliderX, this.rowColor, 58, 14);
@@ -115,20 +131,55 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
       this.zField = new GuiTextField(4, fr, this.rightX + 90, this.fieldRowY, 28, 14);
       this.zField.setMaxStringLength(8);
 
-      this.button_refresh = new GuiButton(0, this.width - 92, this.editTop - 22, 80, 18, "Refresh");
-      this.buttonList.add(this.button_refresh);
-      // resets the selected cosmetic's scale / colour / opacity / position back to defaults
-      this.buttonList.add(new GuiButton(BTN_RESET, this.width - 92 - 86, this.editTop - 22, 80, 18, "Reset"));
+      // search field fills the toolbar between the categories and the Reset button
+      int searchX = this.gridX;
+      int searchW = this.resetX - 8 - searchX;
+      this.searchField = new GuiTextField(5, fr, searchX, this.toolbarY, Math.max(60, searchW), this.toolbarH);
+      this.searchField.setMaxStringLength(40);
+      // Reset/Refresh are drawn + handled manually (themed), so no vanilla GuiButtons here.
       super.initGui();
    }
 
+   // Themed toolbar button (dark panel + accent border on hover), matching the client's GUI style.
+   private void drawThemeButton(int x, int y, int w, int h, String label, boolean hovered, int textColor) {
+      Gui.drawRect(x, y, x + w, y + h, hovered ? 0xFF2A2A2A : 0xFF1A1A1A);
+      int border = hovered ? EsdeathClient.getInstance().rainbow(400) : 0xFF555555;
+      this.drawHorizontalLine(x, x + w - 1, y, border);
+      this.drawHorizontalLine(x, x + w - 1, y + h - 1, border);
+      this.drawVerticalLine(x, y, y + h - 1, border);
+      this.drawVerticalLine(x + w - 1, y, y + h - 1, border);
+      FontRenderer fr = Minecraft.getMinecraft().fontRendererObj;
+      this.drawCenteredString(fr, label, x + w / 2, y + (h - 8) / 2, textColor);
+   }
+
+   // Number of cosmetic names the buttons were last built for; if the catalog grows (the LabyMod
+   // index finishes loading while the menu is open), rebuild so the new entries show without reopening.
+   private int builtCount = -1;
+
+   private void buildButtons() {
+      this.all.clear();
+      this.cosmeticButtonList.clear();
+      int id = 0;
+      for (String name : CosmeticController.getCosmetics()) {
+         CosmeticButton b = new CosmeticButton(id++, 0, 0, 10, BTN_H, name);
+         this.cosmeticButtonList.add(b);
+         this.all.add(b);
+      }
+      this.builtCount = CosmeticController.getCosmetics().size();
+   }
+
    private void rebuildView() {
+      if (CosmeticController.getCosmetics().size() != this.builtCount) {
+         this.buildButtons();
+      }
       this.view.clear();
       String cat = CATS[this.activeCat];
+      String query = this.searchField == null ? "" : this.searchField.getText().trim().toLowerCase();
       for (CosmeticButton b : this.all) {
          String name = strip(b.displayString);
-         boolean match = CosmeticController.categoryOf(name).equals(cat);
-         b.visible = match; // only active-category buttons participate
+         boolean match = CosmeticController.categoryOf(name).equals(cat)
+            && (query.isEmpty() || name.toLowerCase().contains(query));
+         b.visible = match; // only active-category + search-matching buttons participate
          if (match) {
             this.view.add(b);
          }
@@ -160,9 +211,93 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
       }
    }
 
+   // The selected cosmetic's LabyMod Meta if it's a LabyMod cosmetic (else null).
+   private me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Meta selectedLabyMeta() {
+      if (this.selected == null || !CosmeticController.isLabymod(this.selected)) {
+         return null;
+      }
+      int id = me.txb1.extras.cosmetics.cosmetics.laby.LabyOfflineCatalog.idOf(this.selected);
+      return id <= 0 ? null : me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.meta(id);
+   }
+
+   // Number of recolourable slots for the selected cosmetic (0 for non-LabyMod / single-colour).
+   private int selectedColorSlots() {
+      return me.txb1.extras.cosmetics.cosmetics.laby.CosmeticLabyGeometry.colorSlotCount(this.selectedLabyMeta());
+   }
+
+   // The selected LabyMod cosmetic's layer variants ("styles"), empty if none / geometry not loaded.
+   private java.util.List<me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Style> selectedStyles() {
+      if (this.selected == null || !CosmeticController.isLabymod(this.selected)) {
+         return java.util.Collections.emptyList();
+      }
+      int id = me.txb1.extras.cosmetics.cosmetics.laby.LabyOfflineCatalog.idOf(this.selected);
+      return id <= 0 ? java.util.Collections.<me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Style>emptyList()
+         : me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.styles(id);
+   }
+
+   // Default style/texture UUID for the selected cosmetic (the "texture" entry of default_data).
+   private String defaultStyleUuid(me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Meta m) {
+      if (m == null || m.options == null || m.defaultData == null) {
+         return null;
+      }
+      for (int i = 0; i < m.options.length && i < m.defaultData.length; i++) {
+         if ("texture".equalsIgnoreCase(m.options[i])) {
+            return m.defaultData[i];
+         }
+      }
+      return null;
+   }
+
+   private String currentStyleUuid(me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Meta m) {
+      return CosmeticController.getOption(this.selected, "labystyle", this.defaultStyleUuid(m));
+   }
+
+   private String currentStyleName(me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Meta m,
+                                   java.util.List<me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Style> styles) {
+      String cur = this.currentStyleUuid(m);
+      if (cur != null) {
+         for (me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Style s : styles) {
+            if (s.uuid.equalsIgnoreCase(cur)) {
+               return s.name;
+            }
+         }
+      }
+      return styles.isEmpty() ? "Default" : styles.get(0).name;
+   }
+
+   private void cycleStyle(boolean backward) {
+      me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Meta m = this.selectedLabyMeta();
+      java.util.List<me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Style> styles = this.selectedStyles();
+      if (m == null || styles.isEmpty()) {
+         return;
+      }
+      String cur = this.currentStyleUuid(m);
+      int idx = 0;
+      for (int i = 0; i < styles.size(); i++) {
+         if (styles.get(i).uuid.equalsIgnoreCase(cur)) {
+            idx = i;
+            break;
+         }
+      }
+      int n = styles.size();
+      int next = backward ? (idx - 1 + n) % n : (idx + 1) % n;
+      CosmeticController.setOption(this.selected, "labystyle", styles.get(next).uuid);
+   }
+
+   // Current RRGGBB for a LabyMod colour slot (user override, else the cosmetic's default).
+   private String slotHex(me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Meta lm, int slot) {
+      return CosmeticController.getOption(this.selected, "labycol" + slot,
+         me.txb1.extras.cosmetics.cosmetics.laby.CosmeticLabyGeometry.slotDefaultHex(lm, slot));
+   }
+
    private void populate() {
       if (this.selected != null) {
-         this.hexField.setText(CosmeticController.getColorHex(this.selected));
+         me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Meta lm = this.selectedLabyMeta();
+         if (lm != null && me.txb1.extras.cosmetics.cosmetics.laby.CosmeticLabyGeometry.colorSlotCount(lm) > 0) {
+            this.hexField.setText(this.slotHex(lm, this.colorSlot));
+         } else {
+            this.hexField.setText(CosmeticController.getColorHex(this.selected));
+         }
          this.xField.setText(String.valueOf(CosmeticController.getOffsetX(this.selected)));
          this.yField.setText(String.valueOf(CosmeticController.getOffsetY(this.selected)));
          this.zField.setText(String.valueOf(CosmeticController.getOffsetZ(this.selected)));
@@ -170,7 +305,16 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
    }
 
    private void applyHex() {
-      if (this.selected != null) {
+      if (this.selected == null) {
+         return;
+      }
+      me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Meta lm = this.selectedLabyMeta();
+      if (lm != null && me.txb1.extras.cosmetics.cosmetics.laby.CosmeticLabyGeometry.colorSlotCount(lm) > 0) {
+         String h = this.hexField.getText().replace("#", "").trim();
+         if (h.length() == 6) {
+            CosmeticController.setOption(this.selected, "labycol" + this.colorSlot, h.toUpperCase());
+         }
+      } else {
          CosmeticController.setColorHex(this.selected, this.hexField.getText());
       }
    }
@@ -240,16 +384,26 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
    protected void mouseClicked(int var1, int var2, int var3) throws IOException {
       this.lastButton = var3;
 
-      // category breadcrumb
+      // horizontal category tabs
       for (int i = 0; i < CATS.length; i++) {
-         int cy = this.catY + i * this.catH;
-         if (this.inRect(var1, var2, this.catX, cy, 90, this.catH)) {
+         if (this.inRect(var1, var2, this.catTabX[i], this.catY, this.catTabW[i], this.catH)) {
             if (this.activeCat != i) {
                this.activeCat = i;
                this.scroll = 0;
             }
             return;
          }
+      }
+
+      // toolbar: search field + themed Reset/Refresh
+      this.searchField.mouseClicked(var1, var2, var3);
+      if (this.inRect(var1, var2, this.resetX, this.toolbarY, this.toolBtnW, this.toolBtnH)) {
+         this.doReset();
+         return;
+      }
+      if (this.inRect(var1, var2, this.refreshX, this.toolbarY, this.toolBtnW, this.toolBtnH)) {
+         this.doRefresh();
+         return;
       }
 
       // left scrollbar
@@ -264,14 +418,33 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
          this.xField.mouseClicked(var1, var2, var3);
          this.yField.mouseClicked(var1, var2, var3);
          this.zField.mouseClicked(var1, var2, var3);
-         if (this.inRect(var1, var2, this.sliderX, this.rowScale, this.sliderW, 12)) {
+         // LabyMod colour swatches: clicking one selects it as the active colour slot.
+         int slots = this.selectedColorSlots();
+         boolean swatchHit = false;
+         if (slots > 0) {
+            for (int i = 0; i < slots; i++) {
+               int sx = this.blendX + i * (SWATCH_W + SWATCH_GAP);
+               if (this.inRect(var1, var2, sx, this.rowColor, SWATCH_W, 14)) {
+                  this.colorSlot = i;
+                  this.populate();
+                  swatchHit = true;
+                  break;
+               }
+            }
+         }
+         if (swatchHit) {
+            // handled
+         } else if (this.inRect(var1, var2, this.sliderX, this.rowScale, this.sliderW, 12)) {
             this.scaleDragging = true;
             this.setScaleFromMouse(var1);
          } else if (this.inRect(var1, var2, this.sliderX, this.rowOpacity, this.sliderW, 12)) {
             this.alphaDragging = true;
             this.setAlphaFromMouse(var1);
-         } else if (this.inRect(var1, var2, this.blendX, this.rowColor, this.blendW, 14)) {
+         } else if (slots == 0 && this.inRect(var1, var2, this.blendX, this.rowColor, this.blendW, 14)) {
             CosmeticController.setOverlay(this.selected, !CosmeticController.isOverlay(this.selected));
+         } else if (!this.selectedStyles().isEmpty() && this.inRect(var1, var2, this.sliderX, this.rowStyle, this.sliderW, 12)) {
+            // LabyMod cosmetic with multiple layer variants -> the Style row cycles them
+            this.cycleStyle(var3 == 1);
          } else {
             List<CosmeticOptions.Opt> opts = CosmeticOptions.get(this.selected);
             // first option is the "Style" row on the left; the rest stack in the right column
@@ -317,6 +490,12 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
          super.keyTyped(var1, var2);
          return;
       }
+      // search field is always available (independent of a selected cosmetic)
+      if (this.searchField != null && this.searchField.isFocused()) {
+         this.searchField.textboxKeyTyped(var1, var2);
+         this.scroll = 0;
+         return;
+      }
       if (this.selected != null && this.hexField != null) {
          if (this.hexField.isFocused()) {
             this.hexField.textboxKeyTyped(var1, var2);
@@ -351,30 +530,32 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
          this.yField.updateCursorCounter();
          this.zField.updateCursorCounter();
       }
+      if (this.searchField != null) {
+         this.searchField.updateCursorCounter();
+      }
    }
 
-   @Override
-   protected void actionPerformed(GuiButton var1) throws IOException {
-      if (var1.id == BTN_RESET) {
-         // reset the selected cosmetic's scale/colour/opacity/position; stay on the screen
-         if (this.selected != null) {
-            CosmeticController.resetCosmetic(this.selected);
-            this.populate(); // refresh the hex + X/Y/Z fields (sliders read live)
-         }
-         return;
+   // Reset the selected cosmetic's scale/colour/opacity/position back to defaults; stay on screen.
+   private void doReset() {
+      if (this.selected != null) {
+         CosmeticController.resetCosmetic(this.selected);
+         this.populate(); // refresh the hex + X/Y/Z fields (sliders read live)
       }
-      // Refresh (id 0): reload everyone's equipped cosmetics, then close.
+   }
+
+   // Reload everyone's equipped cosmetics, then close.
+   private void doRefresh() {
       EsdeathClient.getInstance().getPlayerMapList().forEach(var0 -> {
          var0.getCosmetics().clear();
          var0.loadCosmetics();
       });
       Minecraft.getMinecraft().displayGuiScreen((GuiScreen) null);
-      super.actionPerformed(var1);
    }
 
    @Override
    protected void actionPerformed(CosmeticButton var1) throws IOException {
       String var2 = strip(var1.displayString);
+      this.colorSlot = 0; // reset which colour slot is being edited when picking a new cosmetic
       if (this.lastButton == 1) {
          this.selected = var2;
          this.populate();
@@ -395,15 +576,30 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
 
       FontRenderer fr = Minecraft.getMinecraft().fontRendererObj;
 
-      // breadcrumb categories (active gets "v", others ">")
+      // horizontal category tabs
       for (int i = 0; i < CATS.length; i++) {
-         int cy = this.catY + i * this.catH;
          boolean active = i == this.activeCat;
-         String arrow = active ? " §7v" : " §7>";
-         fr.drawStringWithShadow((active ? "§b§l" : "§7") + CATS[i] + arrow, this.catX, cy, -1);
+         int tx = this.catTabX[i];
+         int tw = this.catTabW[i];
+         boolean hov = this.inRect(var1, var2, tx, this.catY, tw, this.catH);
+         Gui.drawRect(tx, this.catY, tx + tw, this.catY + this.catH, active ? 0xFF2A2A2A : (hov ? 0xFF222222 : 0xFF141414));
+         if (active) {
+            this.drawHorizontalLine(tx, tx + tw - 1, this.catY + this.catH - 1, EsdeathClient.getInstance().rainbow(400));
+         }
+         this.drawCenteredString(fr, (active ? "§f" : "§7") + CATS[i], tx + tw / 2, this.catY + 2, -1);
       }
 
-      super.drawScreen(var1, var2, var3); // visible grid buttons + refresh
+      // toolbar: search field + themed Reset/Refresh
+      this.searchField.drawTextBox();
+      if (this.searchField.getText().isEmpty() && !this.searchField.isFocused()) {
+         fr.drawString("§8Search…", this.searchField.xPosition + 4, this.toolbarY + 4, -1);
+      }
+      this.drawThemeButton(this.resetX, this.toolbarY, this.toolBtnW, this.toolBtnH, "§cReset",
+         this.inRect(var1, var2, this.resetX, this.toolbarY, this.toolBtnW, this.toolBtnH), -1);
+      this.drawThemeButton(this.refreshX, this.toolbarY, this.toolBtnW, this.toolBtnH, "§aRefresh",
+         this.inRect(var1, var2, this.refreshX, this.toolbarY, this.toolBtnW, this.toolBtnH), -1);
+
+      super.drawScreen(var1, var2, var3); // visible grid buttons
 
       this.drawScrollbar();
 
@@ -419,7 +615,14 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
          fr.drawStringWithShadow("§eEdit: §f" + this.selected, MARGIN, this.editTop + 1, -1);
          fr.drawStringWithShadow("§7Color:", MARGIN, this.rowColor + 3, -1);
          this.hexField.drawTextBox();
-         this.drawBlendSwitch(fr);
+         // LabyMod cosmetics with several rgb options get a clickable swatch per colour slot (the hex
+         // field edits the selected swatch); others get the Multiply/Overlay blend switch.
+         int slots = this.selectedColorSlots();
+         if (slots > 0) {
+            this.drawColorSwatches(fr, this.selectedLabyMeta(), slots);
+         } else {
+            this.drawBlendSwitch(fr);
+         }
          this.drawAlphaSlider(fr);
          this.drawScaleSlider(fr);
          this.drawStyleRow(fr);
@@ -476,6 +679,19 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
    // "Style:" row on the left column = the cosmetic's first OAM variant option, or static "Default".
    private void drawStyleRow(FontRenderer fr) {
       fr.drawStringWithShadow("§7Style:", MARGIN, this.rowStyle + 2, -1);
+      // LabyMod cosmetics: the Style row cycles the cosmetic's layer variants (e.g. katana hip/back/dual)
+      java.util.List<me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Style> styles = this.selectedStyles();
+      if (!styles.isEmpty()) {
+         Gui.drawRect(this.sliderX, this.rowStyle, this.sliderX + this.sliderW, this.rowStyle + 12, 0xFF333333);
+         fr.drawStringWithShadow("§f" + this.currentStyleName(this.selectedLabyMeta(), styles), this.sliderX + 3, this.rowStyle + 2, -1);
+         return;
+      }
+      // a selected LabyMod cosmetic whose geometry is still loading -> styles not known yet
+      if (this.selectedLabyMeta() != null && me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.geometryEngine(
+            me.txb1.extras.cosmetics.cosmetics.laby.LabyOfflineCatalog.idOf(this.selected)) == null) {
+         fr.drawStringWithShadow("§8loading…", this.sliderX, this.rowStyle + 2, -1);
+         return;
+      }
       List<CosmeticOptions.Opt> opts = CosmeticOptions.get(this.selected);
       if (opts.isEmpty()) {
          fr.drawStringWithShadow("§fDefault", this.sliderX, this.rowStyle + 2, -1);
@@ -493,6 +709,33 @@ public class CosmeticGui extends me.txb1.EsdeathGuiScreen {
          int oy = this.optStartY + (i - 1) * 14;
          Gui.drawRect(this.rightX, oy, this.rightX + 150, oy + 12, 0xFF333333);
          fr.drawStringWithShadow("§7" + o.label + ": §f" + this.optLabel(o), this.rightX + 3, oy + 2, -1);
+      }
+   }
+
+   private static final int SWATCH_W = 14;
+   private static final int SWATCH_GAP = 3;
+
+   // One clickable colour swatch per rgb slot of a multi-colour LabyMod cosmetic. The active slot
+   // (edited by the hex field) gets an accent border. Click a swatch (handled in mouseClicked) to
+   // make it the active slot.
+   private void drawColorSwatches(FontRenderer fr, me.txb1.extras.cosmetics.laby.geo.LabyCosmetics.Meta lm, int slots) {
+      for (int i = 0; i < slots; i++) {
+         int sx = this.blendX + i * (SWATCH_W + SWATCH_GAP);
+         int rgb = 0xFF000000 | (parseHexColor(this.slotHex(lm, i)) & 0xFFFFFF);
+         Gui.drawRect(sx, this.rowColor, sx + SWATCH_W, this.rowColor + 14, rgb);
+         int border = (i == this.colorSlot) ? EsdeathClient.getInstance().rainbow(400) : 0xFF000000;
+         this.drawHorizontalLine(sx, sx + SWATCH_W - 1, this.rowColor, border);
+         this.drawHorizontalLine(sx, sx + SWATCH_W - 1, this.rowColor + 13, border);
+         this.drawVerticalLine(sx, this.rowColor, this.rowColor + 13, border);
+         this.drawVerticalLine(sx + SWATCH_W - 1, this.rowColor, this.rowColor + 13, border);
+      }
+   }
+
+   private static int parseHexColor(String hex) {
+      try {
+         return Integer.parseInt(hex.replace("#", "").trim(), 16);
+      } catch (Exception e) {
+         return 0xFFFFFF;
       }
    }
 

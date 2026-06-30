@@ -71,6 +71,7 @@ public class ModuleManager {
       this.addModule(new me.txb1.player.modulesystem.modules.utils.BedTracker());
       this.addModule(new me.txb1.player.modulesystem.modules.utils.EventTimers());
       this.addModule(new me.txb1.player.modulesystem.modules.utils.AntiMisplace());
+      this.addModule(new me.txb1.player.modulesystem.modules.utils.BedBreakSound());
       this.addModule(new me.txb1.player.modulesystem.modules.render.AdvancedCulling());
       this.addModule(new me.txb1.player.modulesystem.modules.player.ProjectL());
       this.addModule(new Hitbox());

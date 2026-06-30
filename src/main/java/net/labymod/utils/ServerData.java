@@ -20,6 +20,8 @@ public class ServerData {
     }
 
     public String getAddress() { return address; }
+    /** Alias used by ported LabyConnect code. */
+    public String getIp() { return address; }
     public int getPort() { return port; }
     public String getName() { return name; }
 }

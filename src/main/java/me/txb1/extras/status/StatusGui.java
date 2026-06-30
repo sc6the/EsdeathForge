@@ -13,7 +13,7 @@ public class StatusGui extends GuiScreen {
    private GuiTextField sizeField;
    private GuiTextField yField;
 
-   private static final float SIZE_MIN = 0.5F, SIZE_MAX = 3.0F;
+   private static final float SIZE_MIN = 0.01F, SIZE_MAX = 3.0F;
    private static final float Y_MIN = -2.0F, Y_MAX = 2.0F;
 
    @Override

@@ -56,9 +56,10 @@ public class MixinRenderPlayer {
       self.addLayer(new CosmeticFliege(self));
       self.addLayer(new CosmeticWitherEffect(self));
       self.addLayer(new CosmeticCreeperEffect(self));
-      // LabyMod cosmetics: one generic geometry-engine layer renders ALL of a player's real
-      // equipped LabyMod cosmetics (laby.net ownership + dl.labymod.net Bedrock geometry/textures).
-      // Supersedes the hand-ported Backpack/WolfTail/Cap (they were ids 20/1/19, now covered here).
+      // LabyMod cosmetics as OFFLINE cosmetics: renders only the LOCAL player's selected LabyMod
+      // cosmetics (equipped in the cosmetic menu's "Labymod" category) using each cosmetic's
+      // default_data + dl.labymod.net Bedrock geometry/textures. Does NOT show other players' owned
+      // cosmetics. Selectable names are registered by LabyOfflineCatalog from the remote index.
       self.addLayer(new me.txb1.extras.cosmetics.cosmetics.laby.CosmeticLabyGeometry(self));
       // full OAM (OldAnimationsMod) cosmetic set — geometry + animation ported verbatim
       for (me.txb1.extras.cosmetics.CosmeticBase layer : me.txb1.extras.cosmetics.oam.OamCosmeticManager.build(self)) {

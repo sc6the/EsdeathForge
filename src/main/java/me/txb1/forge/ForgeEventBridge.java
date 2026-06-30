@@ -44,6 +44,12 @@ public class ForgeEventBridge {
          EventManager.call(new EventTick());
          EventManager.call(new EventUpdate());
 
+         // LabyConnect: drive near-player user tracking + presence updates.
+         me.txb1.extras.labyconnect.LabyConnectManager.onClientTick();
+
+         // Build the offline LabyMod cosmetic catalog (menu entries) once its remote index loads.
+         me.txb1.extras.cosmetics.cosmetics.laby.LabyOfflineCatalog.ensureRegistered();
+
          // Utils modules with periodic logic
          me.txb1.player.modulesystem.modules.utils.AutoGG.tick();
          me.txb1.player.modulesystem.modules.utils.AutoTip.tick();
@@ -161,6 +167,7 @@ public class ForgeEventBridge {
       String text = event.message.getUnformattedText();
       me.txb1.player.modulesystem.modules.utils.AutoGG.onChat(text);
       me.txb1.player.modulesystem.modules.utils.UpgradeHud.onChat(text);
+      me.txb1.player.modulesystem.modules.utils.BedBreakSound.onChat(event.message.getFormattedText());
       if (me.txb1.player.modulesystem.modules.utils.AutoTip.shouldHide()
             && me.txb1.player.modulesystem.modules.utils.AutoTip.isTipMessage(text)) {
          event.setCanceled(true);
@@ -181,6 +188,9 @@ public class ForgeEventBridge {
    public void onKeyInput(InputEvent.KeyInputEvent event) {
       if (EsdeathForgeMod.OPEN_GUI.isPressed() && Minecraft.getMinecraft().currentScreen == null) {
          Minecraft.getMinecraft().displayGuiScreen(new EsdeathIngameMenu());
+      }
+      if (EsdeathForgeMod.OPEN_LABYCHAT.isPressed() && Minecraft.getMinecraft().currentScreen == null) {
+         Minecraft.getMinecraft().displayGuiScreen(new me.txb1.extras.labyconnect.gui.LabyChatGui());
       }
    }
 
